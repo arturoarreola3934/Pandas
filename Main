@@ -1,0 +1,56 @@
+import pandas as pd
+from numpy.ma.extras import row_stack, column_stack
+
+archivo = pd.read_csv('paciente.csv')
+
+if __name__ == '__main__':
+    print(archivo)
+    df = pd.DataFrame(archivo)
+
+    # a) ¿Cuántos pacientes y cuántas columnas hay?
+    datos = len(df.columns)
+    pac = len(archivo)
+    print("Hay", pac, "pacientes")
+    print("Hay", datos, "columnas")
+    # b) ¿Qué columnas tienen faltantes y cuántos?
+    faltantes = df.isna().sum()
+    print("Columnas con datos faltantes:")
+    print(faltantes[faltantes > 0], "\n")
+    # c) ¿Qué tipo de dato tiene cada columna?
+    print("Tipos de datos por columna:")
+    print(df.dtypes)
+
+    # a) Filtrar pacientes con fiebre (temp_c >= 38) Y taquicardia (fc_lpm > 100)
+    alerta = df[(df["temp_c"] >= 38) & (df["fc_lpm"] > 100)]
+    # b) ¿Cuántos son? Mostrar id, temp_c, fc_lpm y servicio
+    print(f"Total de pacientes en alerta: {len(alerta)}\n")
+    print(alerta[["id", "temp_c", "fc_lpm", "servicio"]], "\n")
+    # c) ¿En qué servicios están?
+    print("Distribución por servicio:")
+    print(alerta["servicio"].value_counts())
+
+    # a) Crear la columna imc = peso / estatura^2
+    df["imc"] = df["peso_kg"] / (df["estatura_m"] ** 2)
+    # b) Clasificar el IMC usando pd.cut con right=False
+    bins = [0, 18.5, 25, 30, 100]
+    labels = ["Bajo peso", "Normal", "Sobrepeso", "Obesidad"]
+    df["categoria_imc"] = pd.cut(df["imc"], bins=bins, labels=labels, right=False)
+    # c) Contar pacientes por categoría (incluyendo los NaN) y revisar los faltantes
+    print("Pacientes por categoría:")
+    print(df["categoria_imc"].value_counts(dropna=False), "\n")
+    sin_imc = df[df["imc"].isna()]
+    print(f"Quedaron sin IMC: {len(sin_imc)} pacientes")
+    print(sin_imc[["id", "peso_kg", "estatura_m", "imc"]])
+
+    # a), b) y c) Agrupar por servicio, calcular métricas, redondear y ordenar
+    resumen = (
+        df.groupby("servicio")
+        .agg(
+            pacientes=("id", "count"),
+            temp_promedio=("temp_c", "mean"),
+            fc_promedio=("fc_lpm", "mean")
+        )
+        .round(1)
+        .sort_values(by="fc_promedio", ascending=False)
+    )
+    print(resumen)
